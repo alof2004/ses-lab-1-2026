@@ -1,9 +1,21 @@
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
+const net = require('net');
+
 function pingServer(userIP) {
-  // DANGER: Taking untrusted user input and putting it directly into a system command!
-  // An attacker could pass an IP like: "8.8.8.8; rm -rf /"
-  const command = "ping -c 4 " + userIP;
-  exec(command, (error, stdout, stderr) => {
-  console.log(stdout);
+  // Validate input: allow only IPv4/IPv6 literals (no hostnames, no extra chars)
+  if (net.isIP(userIP) === 0) {
+    throw new Error('Invalid IP address');
+  }
+
+  // No shell is used here, so characters like ; | & won't be interpreted
+  execFile('ping', ['-c', '4', userIP], { timeout: 10_000 }, (error, stdout, stderr) => {
+    if (error) {
+      // avoid leaking stderr to logs if you don't need it
+      console.error('Ping failed:', error.message);
+      return;
+    }
+    console.log(stdout);
   });
 }
+
+module.exports = { pingServer };
